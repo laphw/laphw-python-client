@@ -1,0 +1,15 @@
+[codespell]
+# Codespell configuration
+# See: https://github.com/codespell-project/codespell
+
+# Skip certain file types and directories
+skip = .git,*.pyc,*.pyo,__pycache__,*.egg-info,*.tox,*.venv,venv,.venv,node_modules,dist,build,.mypy_cache,.pytest_cache,.ruff_cache,uv.lock
+
+# Ignore certain words (add more as needed)
+ignore-words-list = laphw,tldr,hw
+
+# Check hidden files
+check-hidden = true
+
+# Quiet mode - only show errors
+quiet-level = 2
