@@ -1,6 +1,9 @@
 from dataclasses import dataclass
 from pathlib import Path
-from typing import Dict, List, Set
+from pprint import pprint
+from typing import Any
+
+import frontmatter
 
 Filename = str
 
@@ -15,51 +18,38 @@ def get_fixes_folder() -> Path:
 FIXES_ROOT_FOLDER = get_fixes_folder()
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class MetaData:
-    distributions: Set[str]
-    brands: Set[str]
-    models: Set[str]
-    tags: List[str]
+    distributions: set[str]
+    brands: set[str]
+    models: set[str]
+    tags: list[str]
     difficulty: str
-    tested_by: Set[str]
+    tested_by: set[str]
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class FixedDistributions:
-    distributions: Set[str]
-    distribution_paths: List[Path]
+    distributions: set[str]
+    distribution_paths: list[Path]
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class FixedBrands:
-    brand_names: Set[str]
-    brand_paths: List[Path]
+    brand_names: set[str]
+    brand_paths: list[Path]
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class FixedModels:
-    model_names: Set[str]
-    model_paths: List[Path]
+    model_names: set[str]
+    model_paths: list[Path]
 
 
-@dataclass(frozen=True)
+@dataclass(frozen=True, kw_only=True)
 class Fixes:
-    fix_file_names: Set[str]
-    fix_file_paths: List[Path]
-
-
-@dataclass(frozen=True)
-class FixedModelsByDistribution:
-    distribution: str
-    devices: Dict[str, Path]
-
-
-@dataclass(frozen=True)
-class FixesForModels:
-    device: str
-    device_path: Path
-    fixes: List[Filename]
+    fix_file_names: set[str]
+    fix_file_paths: list[Path]
 
 
 def check_dir(path: Path) -> None:
@@ -69,31 +59,14 @@ def check_dir(path: Path) -> None:
         raise FileNotFoundError(f"Directory not found: {path}")
 
 
-def check_file(path: Path) -> None:
-    if not path.is_file():
-        raise ValueError(f"Path is not a file: {path}")
-    if not path.exists():
-        raise FileNotFoundError(f"Directory not found: {path}")
-
-
-def get_sub_dir_names(parent: Path) -> List[str]:
+def get_sub_dir_names(parent: Path) -> list[str]:
     check_dir(parent)
     return [dir.name for dir in parent.iterdir() if dir.is_dir()]
 
 
-def get_sub_dir_paths(parent: Path) -> List[Path]:
+def get_sub_dir_paths(parent: Path) -> list[Path]:
     check_dir(parent)
     return [dir for dir in parent.iterdir() if dir.is_dir()]
-
-
-def get_file_names(path: Path) -> List[str]:
-    check_file(path)
-    return [file.name for file in path.iterdir() if file.is_file()]
-
-
-def get_file_paths(path: Path) -> List[Path]:
-    check_file(path)
-    return [file for file in path.iterdir() if file.is_file()]
 
 
 def get_distributions() -> FixedDistributions:
@@ -138,20 +111,64 @@ def get_fixes() -> Fixes:
     )
 
 
-def get_brand_from_path() -> List[Path]:
-    lenovo_fixes = []
-    models = get_models()
-    for model in models.model_paths:
-        if "lenovo" in str(model):
-            lenovo_fixes.append(model)
-    return lenovo_fixes
+def parse_frontmatter(path: Path) -> dict[Any, Any]:
+    with open(path, encoding="utf-8") as f:
+        post = frontmatter.load(f)
+        return post.metadata  # type: ignore[no-any-return]
+
+
+def is_brand_model_distribution_in_dict(
+    data: dict[str, Any], search_string: str
+) -> bool:
+    search_string = search_string.lower()
+
+    # Check distributions (list)
+    distributions = data.get("distributions", [])
+    if any(search_string in dist.lower() for dist in distributions):
+        return True
+
+    # Check models (list or string)
+    models = data.get("model", [])
+    if isinstance(models, str):
+        models = [models]
+    if any(search_string in model.lower() for model in models):
+        return True
+    if any("all" in model.lower() for model in models):
+        return True
+
+    # Check brand (string)
+    brand = data.get("brand", "")
+    if search_string in brand.lower():
+        return True
+    if "generic" in brand.lower():
+        return True
+
+    return False
+
+
+def get_brand_model_distribution(search_string: str) -> set[Path]:
+    """Get all fixes for a brand, model or distributions"""
+    found_fixes = []
+    all_fixes = get_fixes()
+    for path in all_fixes.fix_file_paths:
+        if search_string in path.parts:
+            found_fixes.append(path)
+        if "common" in path.parts:
+            if is_brand_model_distribution_in_dict(
+                parse_frontmatter(path), search_string
+            ):
+                found_fixes.append(path)
+
+    return set(found_fixes)
 
 
 if __name__ == "__main__":
     # print(get_distributions())
     # print(get_brands())
     # print(get_models())
-    # print(get_fixes())
-    fixes = get_fixes()
-    print(len(fixes.fix_file_paths))
-    # print(get_brand_from_path())
+    # pprint(get_fixes())
+    # fixes = get_fixes()
+    # print(len(fixes.fix_file_paths))
+    pprint(get_brand_model_distribution("lenovo"))
+    # pprint(get_brand_model_distribution("thinkpad-x1-carbon-gen6"))
+    # pprint(get_brand_model_distribution("ubuntu"))
