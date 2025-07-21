@@ -7,6 +7,8 @@ import frontmatter
 
 Filename = str
 
+# TODO use walk instead of iterdir(), to get subfolders and files.
+
 
 def get_fixes_folder() -> Path:
     fixes_folder_path = Path.home() / ".cache" / "laphw" / "fixes"
@@ -48,8 +50,9 @@ class FixedModels:
 
 @dataclass(frozen=True, kw_only=True)
 class Fixes:
-    fix_file_names: set[str]
-    fix_file_paths: list[Path]
+    fix_file_names: frozenset[str]
+    fix_file_paths: frozenset[Path]
+    fix_file_stem: frozenset[str]
 
 
 def check_dir(path: Path) -> None:
@@ -102,12 +105,15 @@ def get_models() -> FixedModels:
     return FixedModels(model_names=set(model_names), model_paths=model_paths)
 
 
-def get_fixes() -> Fixes:
+def get_fixes_documents() -> Fixes:
     fix_file_paths = list(Path(FIXES_ROOT_FOLDER).rglob("*.md"))
     fix_file_names = [file_path.name for file_path in fix_file_paths]
+    fix_file_stem = [hardware_fix.stem for hardware_fix in fix_file_paths]
 
     return Fixes(
-        fix_file_names=set(fix_file_names), fix_file_paths=list(fix_file_paths)
+        fix_file_names=frozenset(fix_file_names),
+        fix_file_paths=frozenset(fix_file_paths),
+        fix_file_stem=frozenset(fix_file_stem),
     )
 
 
@@ -146,11 +152,11 @@ def is_brand_model_distribution_in_dict(
     return False
 
 
-def get_brand_model_distribution(search_string: str) -> set[Path]:
+# TODO, the function should take both search string and list of paths
+def get_brand_model_distribution(search_string: str, fixes: set[Path]) -> set[Path]:
     """Get all fixes for a brand, model or distributions"""
     found_fixes = []
-    all_fixes = get_fixes()
-    for path in all_fixes.fix_file_paths:
+    for path in fixes:
         if search_string in path.parts:
             found_fixes.append(path)
         if "common" in path.parts:
@@ -167,8 +173,11 @@ if __name__ == "__main__":
     # print(get_brands())
     # print(get_models())
     # pprint(get_fixes())
-    # fixes = get_fixes()
+    fixes = get_fixes_documents()
+    pprint(fixes.fix_file_names)
+    pprint(fixes.fix_file_paths)
+    pprint(fixes.fix_file_stem)
     # print(len(fixes.fix_file_paths))
-    pprint(get_brand_model_distribution("lenovo"))
+    pprint(get_brand_model_distribution("lenovo", set(fixes.fix_file_paths)))
     # pprint(get_brand_model_distribution("thinkpad-x1-carbon-gen6"))
     # pprint(get_brand_model_distribution("ubuntu"))
