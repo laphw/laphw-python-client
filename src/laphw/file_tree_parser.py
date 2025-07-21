@@ -32,20 +32,20 @@ class MetaData:
 
 @dataclass(frozen=True, kw_only=True)
 class FixedDistributions:
-    distributions: set[str]
-    distribution_paths: list[Path]
+    distributions: frozenset[str]
+    distribution_paths: frozenset[Path]
 
 
 @dataclass(frozen=True, kw_only=True)
 class FixedBrands:
-    brand_names: set[str]
-    brand_paths: list[Path]
+    brand_names: frozenset[str]
+    brand_paths: frozenset[Path]
 
 
 @dataclass(frozen=True, kw_only=True)
 class FixedModels:
-    model_names: set[str]
-    model_paths: list[Path]
+    model_names: frozenset[str]
+    model_paths: frozenset[Path]
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -79,7 +79,8 @@ def get_distributions() -> FixedDistributions:
         distribution_names.append(distribution.name)
 
     return FixedDistributions(
-        distributions=set(distribution_names), distribution_paths=distribution_paths
+        distributions=frozenset(distribution_names),
+        distribution_paths=frozenset(distribution_paths),
     )
 
 
@@ -91,7 +92,9 @@ def get_brands() -> FixedBrands:
         brand_names.extend(get_sub_dir_names(distribution_path))
         brand_paths.extend(get_sub_dir_paths(distribution_path))
 
-    return FixedBrands(brand_names=set(brand_names), brand_paths=brand_paths)
+    return FixedBrands(
+        brand_names=frozenset(brand_names), brand_paths=frozenset(brand_paths)
+    )
 
 
 def get_models() -> FixedModels:
@@ -102,7 +105,9 @@ def get_models() -> FixedModels:
         model_names.extend(get_sub_dir_names(brand_path))
         model_paths.extend(get_sub_dir_paths(brand_path))
 
-    return FixedModels(model_names=set(model_names), model_paths=model_paths)
+    return FixedModels(
+        model_names=frozenset(model_names), model_paths=frozenset(model_paths)
+    )
 
 
 def get_fixes_documents() -> Fixes:
