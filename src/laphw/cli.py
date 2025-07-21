@@ -4,7 +4,7 @@ from pprint import pprint
 import typer
 from rich.console import Console
 
-from .parse_file_tree import get_brand_model_distribution, get_fixes_documents
+from .file_tree_parser import get_brand_model_distribution, get_fixes_documents
 
 app = typer.Typer(help="A CLI tool for accessing Linux laptop hardware fixes")
 console = Console()
