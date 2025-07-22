@@ -7,8 +7,6 @@ import frontmatter
 
 Filename = str
 
-# TODO use walk instead of iterdir(), to get subfolders and files.
-
 
 def get_fixes_folder() -> Path:
     fixes_folder_path = Path.home() / ".cache" / "laphw" / "fixes"
@@ -31,21 +29,24 @@ class MetaData:
 
 
 @dataclass(frozen=True, kw_only=True)
-class FixedDistributions:
-    distributions: frozenset[str]
+class Distributions:
+    distributions_names: frozenset[str]
     distribution_paths: frozenset[Path]
+    common_folder_path: frozenset[Path]
 
 
 @dataclass(frozen=True, kw_only=True)
-class FixedBrands:
+class Brands:
     brand_names: frozenset[str]
     brand_paths: frozenset[Path]
+    common_folder_paths: frozenset[Path]
 
 
 @dataclass(frozen=True, kw_only=True)
-class FixedModels:
+class Models:
     model_names: frozenset[str]
     model_paths: frozenset[Path]
+    common_folder_paths: frozenset[Path]
 
 
 @dataclass(frozen=True, kw_only=True)
@@ -64,7 +65,9 @@ def check_dir(path: Path) -> None:
 
 def get_sub_dir_names(parent: Path) -> list[str]:
     check_dir(parent)
-    return [dir.name for dir in parent.iterdir() if dir.is_dir()]
+    return [
+        dir.name for dir in parent.iterdir() if dir.is_dir() if "common" not in dir.name
+    ]
 
 
 def get_sub_dir_paths(parent: Path) -> list[Path]:
@@ -72,32 +75,43 @@ def get_sub_dir_paths(parent: Path) -> list[Path]:
     return [dir for dir in parent.iterdir() if dir.is_dir()]
 
 
-def get_distributions() -> FixedDistributions:
-    distribution_names = []
+def get_distributions() -> Distributions:
     distribution_paths = [dist for dist in FIXES_ROOT_FOLDER.iterdir() if dist.is_dir()]
-    for distribution in distribution_paths:
-        distribution_names.append(distribution.name)
+    distribution_names = [
+        path.name for path in distribution_paths if path.name != "common"
+    ]
+    common_folders = [path for path in distribution_paths if path.name == "common"]
+    distribution_paths = [
+        path for path in distribution_paths if "common" not in path.name
+    ]
 
-    return FixedDistributions(
-        distributions=frozenset(distribution_names),
+    return Distributions(
+        distributions_names=frozenset(distribution_names),
         distribution_paths=frozenset(distribution_paths),
+        common_folder_path=frozenset(common_folders),
     )
 
 
-def get_brands() -> FixedBrands:
+def get_brands() -> Brands:
     brand_names = []
     brand_paths = []
-    fixed_distributions = get_distributions()
-    for distribution_path in fixed_distributions.distribution_paths:
+    distribution_paths = get_distributions()
+    for distribution_path in distribution_paths.distribution_paths:
         brand_names.extend(get_sub_dir_names(distribution_path))
         brand_paths.extend(get_sub_dir_paths(distribution_path))
 
-    return FixedBrands(
-        brand_names=frozenset(brand_names), brand_paths=frozenset(brand_paths)
+    common_folder_paths = [path for path in brand_paths if "common" in path.name]
+
+    brand_paths = [path for path in brand_paths if "common" not in path.name]
+
+    return Brands(
+        brand_names=frozenset(brand_names),
+        brand_paths=frozenset(brand_paths),
+        common_folder_paths=frozenset(common_folder_paths),
     )
 
 
-def get_models() -> FixedModels:
+def get_models() -> Models:
     model_names = []
     model_paths = []
     fixed_brands = get_brands()
@@ -105,8 +119,18 @@ def get_models() -> FixedModels:
         model_names.extend(get_sub_dir_names(brand_path))
         model_paths.extend(get_sub_dir_paths(brand_path))
 
-    return FixedModels(
-        model_names=frozenset(model_names), model_paths=frozenset(model_paths)
+    common_folder_paths = [
+        model_path for model_path in model_paths if "common" in model_path.name
+    ]
+
+    model_paths = [
+        model_path for model_path in model_paths if "common" not in model_path.name
+    ]
+
+    return Models(
+        model_names=frozenset(model_names),
+        model_paths=frozenset(model_paths),
+        common_folder_paths=frozenset(common_folder_paths),
     )
 
 
@@ -128,7 +152,7 @@ def parse_frontmatter(path: Path) -> dict[Any, Any]:
         return post.metadata  # type: ignore[no-any-return]
 
 
-def is_brand_model_distribution_in_dict(
+def is_brand_model_distribution_in_frontmatter(
     data: dict[str, Any], search_string: str
 ) -> bool:
     search_string = search_string.lower()
@@ -157,7 +181,6 @@ def is_brand_model_distribution_in_dict(
     return False
 
 
-# TODO, the function should take both search string and list of paths
 def get_brand_model_distribution(search_string: str, fixes: set[Path]) -> set[Path]:
     """Get all fixes for a brand, model or distributions"""
     found_fixes = []
@@ -165,7 +188,7 @@ def get_brand_model_distribution(search_string: str, fixes: set[Path]) -> set[Pa
         if search_string in path.parts:
             found_fixes.append(path)
         if "common" in path.parts:
-            if is_brand_model_distribution_in_dict(
+            if is_brand_model_distribution_in_frontmatter(
                 parse_frontmatter(path), search_string
             ):
                 found_fixes.append(path)
@@ -174,15 +197,7 @@ def get_brand_model_distribution(search_string: str, fixes: set[Path]) -> set[Pa
 
 
 if __name__ == "__main__":
-    # print(get_distributions())
-    # print(get_brands())
-    # print(get_models())
-    # pprint(get_fixes())
-    fixes = get_fixes_documents()
-    pprint(fixes.fix_file_names)
-    pprint(fixes.fix_file_paths)
-    pprint(fixes.fix_file_stem)
-    # print(len(fixes.fix_file_paths))
-    pprint(get_brand_model_distribution("lenovo", set(fixes.fix_file_paths)))
-    # pprint(get_brand_model_distribution("thinkpad-x1-carbon-gen6"))
+    pprint(get_distributions())
+    pprint(get_brands())
+    pprint(get_models())
     # pprint(get_brand_model_distribution("ubuntu"))
