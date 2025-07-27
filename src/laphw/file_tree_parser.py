@@ -6,11 +6,6 @@ from typing import Any
 
 import frontmatter
 
-DISTRIBUTION = 0
-BRAND = 1
-MODEL = 2
-FIX = 3
-
 
 def get_fixes_folder() -> Path:
     fixes_folder_path = Path.home() / ".cache" / "laphw" / "fixes"
@@ -19,6 +14,11 @@ def get_fixes_folder() -> Path:
     return fixes_folder_path
 
 
+DISTRIBUTION = 0
+BRAND = 1
+MODEL = 2
+FIX = 3
+FILE_PATH_WITH_DIST_BRAND_MODEL = 4
 FIXES_ROOT_FOLDER = get_fixes_folder()
 
 
@@ -106,12 +106,11 @@ def get_name_and_path(
     return frozenset(results)
 
 
-def get_file_tree_data() -> FileTreeData:
-    all_documents = get_all_documents()
+def get_file_tree_data(all_documents: frozenset[Path]) -> FileTreeData:
     all_model_documents = []
     all_common_documents = []
     for document in all_documents:
-        if len(Path(document).parts) == 4:
+        if len(Path(document).parts) == FILE_PATH_WITH_DIST_BRAND_MODEL:
             all_model_documents.append(document)
 
         if "common" in str(document):
@@ -124,21 +123,49 @@ def get_file_tree_data() -> FileTreeData:
     )
 
 
-def get_all_distributions() -> frozenset[str]:
-    all_documents = (
-        get_all_documents()
-    )  # TODO add this as an input argument, do this once
+def get_all_distributions(all_documents: frozenset[Path]) -> frozenset[str]:
     distributions = []
     for document in all_documents:
         path_parts = Path(document).parts
-        distributions.append(path_parts[DISTRIBUTION])
+        if "common" not in path_parts[DISTRIBUTION]:
+            distributions.append(path_parts[DISTRIBUTION])
 
     return frozenset(distributions)
 
 
-def get_models_by_distribution(distribution: str) -> frozenset[str]:
-    file_tree_data = get_file_tree_data()  # TODO add as an argument
+def get_all_brands(all_documents: frozenset[Path]) -> frozenset[str]:
+    brands = []
+    for document in all_documents:
+        path_parts = Path(document).parts
+        if len(path_parts) == FILE_PATH_WITH_DIST_BRAND_MODEL:
+            if "common" not in path_parts[BRAND]:
+                brands.append(path_parts[BRAND])
 
+    return frozenset(brands)
+
+
+def get_all_models(all_documents: frozenset[Path]) -> frozenset[str]:
+    all_models = []
+    for document in all_documents:
+        path_parts = Path(document).parts
+        if len(path_parts) == FILE_PATH_WITH_DIST_BRAND_MODEL:
+            if "common" not in path_parts[MODEL]:
+                all_models.append(path_parts[MODEL])
+
+    return frozenset(all_models)
+
+
+def get_all_fixes(all_documents: frozenset[Path]) -> frozenset[str]:
+    fixes = []
+    for document in all_documents:
+        fixes.append(document.stem)
+
+    return frozenset(fixes)
+
+
+def get_models_by_distribution(
+    distribution: str, file_tree_data: FileTreeData
+) -> frozenset[str]:
     return filter_data(
         documents=file_tree_data.all_model_documents,
         search_string=distribution,
@@ -147,16 +174,17 @@ def get_models_by_distribution(distribution: str) -> frozenset[str]:
     )
 
 
-def get_brands_by_distribution(distribution: str) -> frozenset[str]:
-    file_tree_data = get_file_tree_data()  # TODO add a an argument
-
+def get_brands_by_distribution(
+    distribution: str, file_tree_data: FileTreeData
+) -> frozenset[str]:
     return filter_data(
         file_tree_data.all_model_documents, distribution, DISTRIBUTION, BRAND
     )
 
 
-def get_fixes_by_distribution(distribution: str) -> frozenset[FixMatch]:
-    file_tree_data = get_file_tree_data()  # TODO add as an argument
+def get_fixes_by_distribution(
+    distribution: str, file_tree_data: FileTreeData
+) -> frozenset[FixMatch]:
     fixes = []
 
     for model_document in file_tree_data.all_documents:
@@ -166,9 +194,9 @@ def get_fixes_by_distribution(distribution: str) -> frozenset[FixMatch]:
     return frozenset(fixes)
 
 
-def get_distributions_by_brand(brand: str) -> frozenset[str]:
-    file_tree_data = get_file_tree_data()  # TODO add as argument
-
+def get_distributions_by_brand(
+    brand: str, file_tree_data: FileTreeData
+) -> frozenset[str]:
     return filter_data(
         documents=file_tree_data.all_model_documents,
         search_string=brand,
@@ -177,9 +205,7 @@ def get_distributions_by_brand(brand: str) -> frozenset[str]:
     )
 
 
-def get_models_by_brand(brand: str) -> frozenset[str]:
-    file_tree_data = get_file_tree_data()  # TODO add as argument
-
+def get_models_by_brand(brand: str, file_tree_data: FileTreeData) -> frozenset[str]:
     return filter_data(
         documents=file_tree_data.all_model_documents,
         search_string=brand,
@@ -188,8 +214,7 @@ def get_models_by_brand(brand: str) -> frozenset[str]:
     )
 
 
-def get_fixes_by_brand(brand: str) -> frozenset[FixMatch]:
-    file_tree_data = get_file_tree_data()  # TODO add as an argument
+def get_fixes_by_brand(brand: str, file_tree_data: FileTreeData) -> frozenset[FixMatch]:
     fixes = []
 
     for model_document in file_tree_data.all_documents:
@@ -199,9 +224,9 @@ def get_fixes_by_brand(brand: str) -> frozenset[FixMatch]:
     return frozenset(fixes)
 
 
-def get_distributions_by_model(model: str) -> frozenset[str]:
-    file_tree_data = get_file_tree_data()  # TODO add as an argument
-
+def get_distributions_by_model(
+    model: str, file_tree_data: FileTreeData
+) -> frozenset[str]:
     return filter_data(
         documents=file_tree_data.all_model_documents,
         search_string=model,
@@ -210,9 +235,7 @@ def get_distributions_by_model(model: str) -> frozenset[str]:
     )
 
 
-def get_brand_by_model(model: str) -> str:
-    file_tree_data = get_file_tree_data()  # TODO add as an argument
-
+def get_brand_by_model(model: str, file_tree_data: FileTreeData) -> str:
     return list(
         filter_data(
             documents=file_tree_data.all_model_documents,
@@ -220,14 +243,13 @@ def get_brand_by_model(model: str) -> str:
             search_index=MODEL,
             extract_index=BRAND,
         )
-    )[0]
+    )[0]  # TODO Check if this is safe, it should be only one brand per model
 
 
-def get_fixes_by_model(model: str) -> frozenset[FixMatch]:
-    file_tree_data = get_file_tree_data()  # TODO add as an argument
+def get_fixes_by_model(model: str, file_tree_data: FileTreeData) -> frozenset[FixMatch]:
     fixes = []
 
-    brand = get_brand_by_model(model)
+    brand = get_brand_by_model(model, file_tree_data)
 
     for model_document in file_tree_data.all_documents:
         if brand in model_document.parts[BRAND]:
@@ -245,12 +267,14 @@ def clear_all_cache() -> None:
 
 if __name__ == "__main__":
     clear_all_cache()
+    all_documents = get_all_documents()
+    file_tree_data = get_file_tree_data(all_documents)
     pprint(get_all_documents())
-    pprint(get_all_distributions())
-    pprint(get_file_tree_data())
-    pprint(get_models_by_distribution("ubuntu"))
-    pprint(get_brands_by_distribution("ubuntu"))
-    pprint(get_fixes_by_distribution("ubuntu"))
-    pprint(get_distributions_by_brand("dell"))
-    pprint(get_fixes_by_brand("dell"))
-    pprint(get_fixes_by_model("xps-15-9500"))
+    pprint(get_all_distributions(all_documents))
+    pprint(get_file_tree_data(all_documents))
+    pprint(get_models_by_distribution("ubuntu", file_tree_data))
+    pprint(get_brands_by_distribution("ubuntu", file_tree_data))
+    pprint(get_fixes_by_distribution("ubuntu", file_tree_data))
+    pprint(get_distributions_by_brand("dell", file_tree_data))
+    pprint(get_fixes_by_brand("dell", file_tree_data))
+    pprint(get_fixes_by_model("xps-15-9500", file_tree_data))
